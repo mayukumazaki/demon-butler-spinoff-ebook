@@ -1,0 +1,35 @@
+name: Publish complete e-book
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download verified complete e-book
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ebook-1404-v1 --repo "$GITHUB_REPOSITORY" --pattern Spinoff_GitHub_Pages_1404_Complete.zip
+          echo 'c892c30027828e86b11915830b10ba16d10af5d5a22f496b0dc36ef060a4a2d6  Spinoff_GitHub_Pages_1404_Complete.zip' | sha256sum --check
+          mkdir site
+          unzip -q Spinoff_GitHub_Pages_1404_Complete.zip -d site
+          python3 site/verify_export.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
